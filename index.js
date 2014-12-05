@@ -1,5 +1,6 @@
 var xlsx = require('node-xlsx');
 var fs = require('fs');
+var shell = require('child_process')
 var path = require('path');
 
 module.exports = {
@@ -103,6 +104,37 @@ function toJson(excel, dest, head) {
                     console.log("导出json出错：", err);
                     throw err;
                 }
+
+                var uri = './bin/mongoimport' + ' -h localhost --port 27017  -d test -c ${collection} ${json} --jsonArray';
+
+                var files_to_import = fs.readdirSync("./json");
+                files_to_import.forEach(function(element, index, array) {
+                        array[index] = path.join("./json", element);
+                });
+
+
+
+                files_to_import.forEach(function(element, index, array) {
+                    if (path.extname(element) === '.json') {
+
+                        var temp = element.split(path.sep);
+                        var collection = path.basename(temp[temp.length - 1], ".json");
+                        var newUri = uri.replace("${collection}", collection).replace("${json}", element);
+
+                        var child = shell.exec(newUri, function(error, stdout, stderr) {
+
+                            console.log('state: ' + stdout);
+
+                            if (stderr) {
+                                console.error('stderr: ' + stderr);
+                            };
+
+                            if (error) {
+                                console.error('exec error: ' + error);
+                            }
+                        });
+                    };
+                });
                 console.log('已导出  -->  ', path.basename(dest_file));
             });
         };
